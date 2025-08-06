@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Metro Atlanta Counties Visualization</title>
+    <title>ATTOM Viz</title>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
 
     <!-- Add Shoelace UI -->
@@ -117,7 +117,7 @@
       });
 
       // Load the GeoJSON file with both geometry and data
-      fetch("data/county_data.geojson")
+      fetch("data/county_data_simp.geojson")
         .then((response) => {
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -302,7 +302,9 @@
               data: countyData,
               emphasis: {
                 itemStyle: {
-                  areaColor: "#ff6b6b",
+                  borderColor: "#000000",
+                  borderWidth: 3,
+                  areaColor: "#404040",
                 },
                 label: {
                   show: true,
@@ -361,6 +363,7 @@
           },
           xAxis: {
             type: "value",
+            min: metric === "median_priceSF" ? 100 : undefined,
             axisLabel: {
               formatter: config.axisFormatter,
               fontSize: 12,
