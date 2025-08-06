@@ -424,11 +424,11 @@
           clearInterval(toggleInterval);
         }
 
-        // Toggle between map and bar chart every 4 seconds
+        // Toggle between map and bar chart by setting this parameter
         toggleInterval = setInterval(function () {
           currentOption = currentOption === mapOption ? barOption : mapOption;
           myChart.setOption(currentOption, true);
-        }, 4000);
+        }, 6000);
 
         // Handle window resize
         window.addEventListener("resize", function () {
