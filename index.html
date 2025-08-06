@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Metro Atlanta Counties Visualization</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+
+    <!-- Add Shoelace UI -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.11.2/cdn/themes/light.css"
+    />
+    <script
+      type="module"
+      src="https://cdn.jsdelivr.net/npm/@shoelace-style/shoelace@2.11.2/cdn/shoelace-autoloader.js"
+    ></script>
+
+    <style>
+      body {
+        margin: 0;
+        padding: 10px;
+        font-family: Arial, sans-serif;
+        background-color: #2a2a2a;
+        color: #404040;
+      }
+      #main {
+        width: 100%;
+        height: 520px;
+      }
+      h1 {
+        text-align: center;
+        color: #404040;
+      }
+      .loading {
+        text-align: center;
+        font-size: 18px;
+        color: #404040;
+        margin-top: 250px;
+      }
+      .controls {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      /* Style the radio button group */
+      sl-radio-group {
+        --button-width: 180px;
+      }
+
+      sl-radio-button {
+        margin: 0;
+      }
+      /* Target the button content specifically */
+      sl-radio-button::part(button) {
+        color: #ffffff;
+      }
+
+      /* Target the label text */
+      sl-radio-button::part(label) {
+        color: #ffffff;
+      }
+
+      /* Ensure checked state also has white text */
+      sl-radio-button[checked]::part(button) {
+        color: #ffffff;
+      }
+
+      sl-radio-button[checked]::part(label) {
+        color: #ffffff;
+      }
+      .metric-label {
+        font-weight: 600;
+        color: #ffffff;
+      }
+      #metricRadioGroup {
+        margin-top: 20px;
+      }
+      .attribution {
+        text-align: center;
+        font-size: 12px;
+        color: #ffffff;
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="main">
+      <div class="loading">Loading data...</div>
+    </div>
+
+    <div class="controls">
+      <span class="metric-label">Select Metric:</span>
+      <sl-radio-group id="metricRadioGroup" value="total_sales" size="medium">
+        <sl-radio-button value="total_sales">Total Sales</sl-radio-button>
+        <sl-radio-button value="median_priceSF"
+          >Median Price per SF ($)</sl-radio-button
+        >
+      </sl-radio-group>
+    </div>
+
+    <div class="attribution">
+      <p>Source: ATTOM Data Solutions. Data as of August 2025.</p>
+    </div>
+    <script>
+      var chartDom = document.getElementById("main");
+      var myChart = echarts.init(chartDom);
+      var geoData = null;
+      var currentMetric = "total_sales";
+      var toggleInterval = null;
+
+      // Show loading indicator
+      myChart.showLoading({
+        text: "Loading county data...",
+        color: "#4575b4",
+        textColor: "#000",
+        maskColor: "rgba(255, 255, 255, 0.8)",
+      });
+
+      // Load the GeoJSON file with both geometry and data
+      fetch("data/county_data.geojson")
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then((data) => {
+          geoData = data;
+          setupChart(currentMetric);
+          setupControls();
+        })
+        .catch((error) => {
+          console.error("Error loading GeoJSON:", error);
+          myChart.hideLoading();
+          document.getElementById("main").innerHTML =
+            '<div class="loading" style="color: red;">Error loading data: ' +
+            error.message +
+            "</div>";
+        });
+
+      // Simplified configuration for only 2 metrics
+      function getMetricConfig(metric) {
+        const configs = {
+          total_sales: {
+            title: "Total Sales",
+            formatter: (value) =>
+              value ? value.toLocaleString() + " sales" : "No data",
+            axisFormatter: (value) => value.toLocaleString(),
+            colors: ["#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"],
+          },
+          median_priceSF: {
+            title: "Median Price per SF",
+            formatter: (value) =>
+              value ? "$" + value.toFixed(0) + "/sf" : "No data",
+            axisFormatter: (value) => "$" + value.toFixed(0),
+            colors: [
+              "#ffffcc",
+              "#c7e9b4",
+              "#7fcdbb",
+              "#41b6c4",
+              "#2c7fb8",
+              "#253494",
+            ],
+          },
+        };
+        return configs[metric];
+      }
+
+      function setupChart(metric) {
+        myChart.hideLoading();
+
+        // Extract data from GeoJSON properties
+        var countyData = geoData.features
+          .map(function (feature) {
+            return {
+              name: feature.properties.name,
+              value: feature.properties[metric],
+            };
+          })
+          .filter(function (item) {
+            // Keep all data, including nulls and zeros for proper visualization
+            return item.value !== undefined;
+          });
+
+        // Register the map with ECharts
+        echarts.registerMap("AtlantaCounties", geoData);
+
+        // Sort data for bar chart (ascending order)
+        var sortedData = [...countyData].sort(function (a, b) {
+          // Handle null/undefined values
+          if (a.value === null || a.value === undefined) return 1;
+          if (b.value === null || b.value === undefined) return -1;
+          return a.value - b.value;
+        });
+
+        // Find min and max values for visual map
+        const validValues = countyData
+          .map((item) => item.value)
+          .filter((v) => v !== null && v !== undefined);
+        const minValue = Math.min(...validValues);
+        const maxValue = Math.max(...validValues);
+
+        const config = getMetricConfig(metric);
+
+        console.log(
+          "Loaded",
+          countyData.length,
+          "counties for metric:",
+          metric
+        );
+        console.log(
+          "Value range:",
+          config.axisFormatter(minValue),
+          "to",
+          config.axisFormatter(maxValue)
+        );
+
+        const mapOption = {
+          title: {
+            text: `${config.title} - Metro Atlanta Counties`,
+            left: "center",
+            top: 10,
+            textStyle: {
+              fontSize: 16,
+              color: "#ffffff",
+            },
+          },
+          tooltip: {
+            trigger: "item",
+            formatter: function (params) {
+              const value = params.value;
+              return (
+                "<div style='text-align: center;'>" +
+                params.name +
+                " County" +
+                "<br/>" +
+                config.title +
+                ": " +
+                config.formatter(value) +
+                "</div>"
+              );
+            },
+          },
+          visualMap: {
+            left: "right",
+            top: "center",
+            min: minValue,
+            max: maxValue,
+            inRange: {
+              color: config.colors,
+            },
+            text: ["High", "Low"],
+            calculable: true,
+            textStyle: {
+              color: "#ffffff",
+            },
+            formatter: function (value) {
+              return config.axisFormatter(value);
+            },
+          },
+          series: [
+            {
+              id: "metric",
+              type: "map",
+              roam: false,
+              map: "AtlantaCounties",
+              animationDurationUpdate: 1000,
+              universalTransition: true,
+              data: countyData,
+              emphasis: {
+                itemStyle: {
+                  areaColor: "#ff6b6b",
+                },
+                label: {
+                  show: true,
+                  fontSize: 12,
+                  fontWeight: "bold",
+                },
+              },
+              label: {
+                show: true,
+                fontSize: 10,
+                color: "#404040",
+                backgroundColor: "rgba(255, 255, 255, 0.8)",
+                borderColor: "rgba(255, 255, 255, 0.9)",
+                borderWidth: 1,
+                borderRadius: 3,
+                padding: [2, 4],
+                formatter: function (params) {
+                  return params.name;
+                },
+              },
+            },
+          ],
+        };
+
+        const barOption = {
+          title: {
+            text: `${config.title} - Metro Atlanta Counties`,
+            left: "center",
+            top: 20,
+            textStyle: {
+              fontSize: 16,
+              color: "#ffffff",
+            },
+          },
+          tooltip: {
+            trigger: "axis",
+            formatter: function (params) {
+              const value = params[0].value;
+              return (
+                "<div style='text-align: center;'>" +
+                params[0].name +
+                " County" +
+                "<br/>" +
+                config.title +
+                ": " +
+                config.formatter(value) +
+                "</div>"
+              );
+            },
+          },
+          grid: {
+            left: "20%",
+            right: "10%",
+            top: "15%",
+            bottom: "10%",
+          },
+          xAxis: {
+            type: "value",
+            axisLabel: {
+              formatter: config.axisFormatter,
+              fontSize: 12,
+              color: "#ffffff",
+            },
+          },
+          yAxis: {
+            type: "category",
+            axisLabel: {
+              rotate: 0,
+              fontSize: 12,
+              color: "#ffffff",
+            },
+            data: sortedData.map(function (item) {
+              return item.name;
+            }),
+          },
+          animationDurationUpdate: 1000,
+          series: {
+            type: "bar",
+            id: "metric",
+            data: sortedData.map(function (item) {
+              return item.value;
+            }),
+            universalTransition: true,
+            itemStyle: {
+              color: function (params) {
+                if (params.value === null || params.value === undefined) {
+                  return "#ccc";
+                }
+                // Color gradient based on value
+                const ratio = (params.value - minValue) / (maxValue - minValue);
+                const colors = config.colors;
+                const colorIndex = Math.floor(ratio * (colors.length - 1));
+                return colors[Math.min(colorIndex, colors.length - 1)];
+              },
+            },
+          },
+        };
+
+        let currentOption = mapOption;
+        myChart.setOption(mapOption);
+
+        // Clear existing interval
+        if (toggleInterval) {
+          clearInterval(toggleInterval);
+        }
+
+        // Toggle between map and bar chart every 4 seconds
+        toggleInterval = setInterval(function () {
+          currentOption = currentOption === mapOption ? barOption : mapOption;
+          myChart.setOption(currentOption, true);
+        }, 4000);
+
+        // Handle window resize
+        window.addEventListener("resize", function () {
+          myChart.resize();
+        });
+      }
+
+      // Updated to work with Shoelace radio buttons
+      function setupControls() {
+        const metricRadioGroup = document.getElementById("metricRadioGroup");
+
+        // Listen for the sl-change event from Shoelace
+        metricRadioGroup.addEventListener("sl-change", function (event) {
+          currentMetric = event.target.value;
+          setupChart(currentMetric);
+          console.log("Metric changed to:", currentMetric);
+        });
+      }
+    </script>
+  </body>
+</html>
