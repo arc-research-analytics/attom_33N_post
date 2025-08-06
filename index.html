@@ -146,7 +146,7 @@
             formatter: (value) =>
               value ? value.toLocaleString() + " sales" : "No data",
             axisFormatter: (value) => value.toLocaleString(),
-            colors: ["#e0f3f8", "#abd9e9", "#74add1", "#4575b4", "#313695"],
+            colors: ["#fee5d9", "#fcae91", "#fb6a4a", "#de2d26", "#a50f15"],
           },
           median_priceSF: {
             title: "Median Price per SF",
@@ -164,6 +164,39 @@
           },
         };
         return configs[metric];
+      }
+
+      // Color interpolation function to match visualMap behavior
+      function interpolateColor(color1, color2, weight) {
+        // Convert hex colors to RGB
+        function hexToRgb(hex) {
+          const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+          return result
+            ? {
+                r: parseInt(result[1], 16),
+                g: parseInt(result[2], 16),
+                b: parseInt(result[3], 16),
+              }
+            : null;
+        }
+
+        // Convert RGB to hex
+        function rgbToHex(r, g, b) {
+          return (
+            "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)
+          );
+        }
+
+        const rgb1 = hexToRgb(color1);
+        const rgb2 = hexToRgb(color2);
+
+        if (!rgb1 || !rgb2) return color1;
+
+        const r = Math.round(rgb1.r + (rgb2.r - rgb1.r) * weight);
+        const g = Math.round(rgb1.g + (rgb2.g - rgb1.g) * weight);
+        const b = Math.round(rgb1.b + (rgb2.b - rgb1.b) * weight);
+
+        return rgbToHex(r, g, b);
       }
 
       function setupChart(metric) {
@@ -358,11 +391,23 @@
                 if (params.value === null || params.value === undefined) {
                   return "#ccc";
                 }
-                // Color gradient based on value
+                // Use the same color interpolation as the map's visualMap
                 const ratio = (params.value - minValue) / (maxValue - minValue);
                 const colors = config.colors;
-                const colorIndex = Math.floor(ratio * (colors.length - 1));
-                return colors[Math.min(colorIndex, colors.length - 1)];
+
+                // Interpolate between colors like visualMap does
+                if (ratio <= 0) return colors[0];
+                if (ratio >= 1) return colors[colors.length - 1];
+
+                const colorIndex = ratio * (colors.length - 1);
+                const lowerIndex = Math.floor(colorIndex);
+                const upperIndex = Math.ceil(colorIndex);
+                const lowerColor = colors[lowerIndex];
+                const upperColor = colors[upperIndex];
+                const weight = colorIndex - lowerIndex;
+
+                // Simple linear interpolation between colors
+                return interpolateColor(lowerColor, upperColor, weight);
               },
             },
           },
