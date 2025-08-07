@@ -95,6 +95,10 @@
         <sl-radio-button value="median_priceSF"
           >Median Price per SF ($)</sl-radio-button
         >
+        <sl-radio-button value="median_size">Median Size (SF)</sl-radio-button>
+        <sl-radio-button value="median_vintage"
+          >Median Year Built</sl-radio-button
+        >
       </sl-radio-group>
     </div>
 
@@ -153,6 +157,34 @@
             formatter: (value) =>
               value ? "$" + value.toFixed(0) + "/sf" : "No data",
             axisFormatter: (value) => "$" + value.toFixed(0),
+            colors: [
+              "#ffffcc",
+              "#c7e9b4",
+              "#7fcdbb",
+              "#41b6c4",
+              "#2c7fb8",
+              "#253494",
+            ],
+          },
+          median_size: {
+            title: "Median Size (SF)",
+            formatter: (value) =>
+              value ? value.toFixed(0) + " sf" : "No data",
+            axisFormatter: (value) => value.toLocaleString(),
+            colors: [
+              "#ffffcc",
+              "#c7e9b4",
+              "#7fcdbb",
+              "#41b6c4",
+              "#2c7fb8",
+              "#253494",
+            ],
+          },
+          median_vintage: {
+            title: "Median Year Built",
+            formatter: (value) =>
+              value ? value.toFixed(0) + " year" : "No data",
+            axisFormatter: (value) => value.toFixed(0),
             colors: [
               "#ffffcc",
               "#c7e9b4",
@@ -363,7 +395,12 @@
           },
           xAxis: {
             type: "value",
-            min: metric === "median_priceSF" ? 100 : undefined,
+            min: (() => {
+              if (metric === "median_priceSF") return 100;
+              if (metric === "median_size") return 1500;
+              if (metric === "median_vintage") return 1970;
+              return undefined;
+            })(),
             axisLabel: {
               formatter: config.axisFormatter,
               fontSize: 12,
@@ -428,7 +465,7 @@
         toggleInterval = setInterval(function () {
           currentOption = currentOption === mapOption ? barOption : mapOption;
           myChart.setOption(currentOption, true);
-        }, 6000);
+        }, 5000);
 
         // Handle window resize
         window.addEventListener("resize", function () {
