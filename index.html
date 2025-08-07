@@ -169,21 +169,13 @@
           median_size: {
             title: "Median Size (SF)",
             formatter: (value) =>
-              value ? value.toFixed(0) + " sf" : "No data",
+              value ? value.toLocaleString(0) + " sf" : "No data",
             axisFormatter: (value) => value.toLocaleString(),
-            colors: [
-              "#ffffcc",
-              "#c7e9b4",
-              "#7fcdbb",
-              "#41b6c4",
-              "#2c7fb8",
-              "#253494",
-            ],
+            colors: ["#f2f0f7", "#cbc9e2", "#9e9ac8", "#756bb1", "#54278f"],
           },
           median_vintage: {
             title: "Median Year Built",
-            formatter: (value) =>
-              value ? value.toFixed(0) + " year" : "No data",
+            formatter: (value) => (value ? value.toFixed(0) : "No data"),
             axisFormatter: (value) => value.toFixed(0),
             colors: [
               "#ffffcc",
@@ -282,7 +274,7 @@
 
         const mapOption = {
           title: {
-            text: `${config.title} - Metro Atlanta Counties`,
+            text: config.title,
             left: "center",
             top: 10,
             textStyle: {
@@ -363,7 +355,7 @@
 
         const barOption = {
           title: {
-            text: `${config.title} - Metro Atlanta Counties`,
+            text: config.title,
             left: "center",
             top: 20,
             textStyle: {
